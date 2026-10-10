@@ -3,6 +3,7 @@
 #   src/haiku/make-package.sh [output-dir]
 # Needs the build packages: gtk3_devel gtkmm3_devel glibmm_devel libsigc++_devel boost1.83_devel lilv_devel lv2
 # liblrdf_devel raptor_devel fftw_devel libsndfile_devel curl_devel eigen3 gperf sassc ladspa_sdk_devel
+# and for the Wayland server copy: meson ninja wayland_devel wayland_protocols
 set -e
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -37,6 +38,12 @@ cp -r "$src/data/fonts" "$root/data/"
 ln -s ../apps/Guitarix "$root/bin/guitarix"
 ln -s ../../../../apps/Guitarix "$root/data/deskbar/menu/Applications/Guitarix"
 cp COPYING README changelog "$root/data/documentation/packages/guitarix/"
+
+# the newer Wayland server (drag and drop in the rack, see wayland-server/README.haiku.md), next to the program's libraries
+( cd "$here/wayland-server" && rm -rf build && meson setup build > /dev/null && ninja -C build > /dev/null )
+mkdir -p "$root/lib/guitarix"
+cp "$here/wayland-server/build/wayland-server-inproc.so" "$root/lib/guitarix/"
+cp "$here/wayland-server/License.md" "$root/data/documentation/packages/guitarix/wayland-server-License.md"
 
 # icon, signature and version into the program
 "$here/add_resources.sh" "$root/apps/Guitarix"
@@ -103,6 +110,7 @@ requires {
 	lib:libsigc_2.0
 	lib:libsndfile
 	lib:libstdc++
+	lib:libwayland_server
 }
 INFO
 

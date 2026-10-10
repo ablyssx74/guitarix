@@ -22,6 +22,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifdef __HAIKU__
+#include "haiku_integration.h"
+#endif
 #include <guitarix.h>
 #include <gtkmm/accelmap.h>
 #include "jsonrpc.h"
@@ -1493,6 +1496,10 @@ void MainWindow::set_latency() {
 }
 
 void MainWindow::show_forum_help() {
+#ifdef __HAIKU__
+    if (GxHaikuOpenUrl("https://www.reddit.com/r/Guitarix/"))
+        return;
+#endif
 #if GTK_MINOR_VERSION >= 24
     try {
 	bld.window->show_uri(
@@ -1518,6 +1525,10 @@ void MainWindow::gx_show_help() {
 }
 
 void MainWindow::show_tonehunt() {
+#ifdef __HAIKU__
+    if (GxHaikuOpenUrl("https://tonehunt.org/models?tags%5B0%5D=nam"))
+        return;
+#endif
 #if GTK_MINOR_VERSION >= 24
     try {
 	bld.window->show_uri(
@@ -1543,6 +1554,10 @@ void MainWindow::gx_show_tonehunt() {
 }
 
 void MainWindow::show_rtneural() {
+#ifdef __HAIKU__
+    if (GxHaikuOpenUrl("https://tonehunt.org/models?tags%5B0%5D=aida-x"))
+        return;
+#endif
 #if GTK_MINOR_VERSION >= 24
     try {
 	bld.window->show_uri(

@@ -23,6 +23,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifdef __HAIKU__
+#include "haiku_integration.h"
+#endif
 #include "guitarix.h"       // NOLINT
 
 #ifndef GUITARIX_AS_PLUGIN
@@ -952,6 +955,9 @@ static void mainProg(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
+#ifdef __HAIKU__
+    GxHaikuPreloadWaylandServer();   // before GTK starts: see haiku_integration.h
+#endif
     // This is a hack. If we start qjackctl, we want to make sure it scale
     // automatically for HiDPI displays.
     // Note: we don't change then environment if it is already set to *any* value.
