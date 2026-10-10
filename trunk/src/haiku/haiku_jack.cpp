@@ -24,9 +24,21 @@
 #include <vector>
 
 #include "gx_haiku_audio.h"
+#include "gx_haiku_midi.h"
 
 
 static const uint32 kMaxFrames = 8192;
+
+
+// the buffer of a MIDI port (it lives in the port's buf, which is big enough)
+struct MidiBuf {
+	uint32_t	count;
+	struct Ev {
+		jack_nframes_t	time;
+		size_t			size;
+		uint8_t			data[4];
+	} ev[64];
+};
 
 
 struct _jack_port {
@@ -60,6 +72,7 @@ struct Shim {
 	std::vector<_jack_client*>	clients;			// in the order they were opened
 	std::vector<_jack_port*>	ports;				// index = port id
 	GxHaikuAudio*				audio;
+	GxHaikuMidi*				midi;
 	uint32						rate;
 	int32						frames;
 	bool						detected;
@@ -67,7 +80,7 @@ struct Shim {
 	std::atomic<uint64_t>		frameTime;
 	bool						statsStarted;
 
-	Shim() : audio(NULL), rate(48000), frames(1024), detected(false), hardwareIn(NULL), frameTime(0), statsStarted(false) {}
+	Shim() : audio(NULL), midi(NULL), rate(48000), frames(1024), detected(false), hardwareIn(NULL), frameTime(0), statsStarted(false) {}
 };
 
 Shim gShim;
@@ -144,6 +157,19 @@ Trampoline(uint32 n, const float* in, float* outL, float* outR, void*)
 			continue;
 		for (size_t i = 0; i < client->ports.size(); i++) {
 			_jack_port* p = client->ports[i];
+			if (p->midi && (p->flags & JackPortIsInput) != 0) {
+				// the events that arrived since the last callback
+				MidiBuf* mb = (MidiBuf*)p->buf;
+				mb->count = 0;
+				GxMidiEvent e;
+				while (gShim.midi != NULL && mb->count < 64 && gShim.midi->Pop(&e)) {
+					MidiBuf::Ev& ev = mb->ev[mb->count++];
+					ev.time = 1;
+					ev.size = e.size;
+					memcpy(ev.data, e.data, 3);
+				}
+				continue;
+			}
 			if (!IsAudioInput(p))
 				continue;
 			if (p->source != NULL)
@@ -187,10 +213,10 @@ StatsThread(void*)
 		GxHaikuAudioStats s;
 		audio->GetStats(&s);
 		fprintf(stderr, "[audio] %u Hz %d frames  callbacks %llu  period max %.0f us  load %.1f%%  "
-			"underruns %llu  catch-ups %llu  in peak %.1f%%  own latency ~%.1f ms%s\n",
+			"underruns %llu  catch-ups %llu  in peak %.1f%%  midi events %llu  own latency ~%.1f ms%s\n",
 			s.sampleRate, s.bufferFrames, (unsigned long long)s.callbacks, s.periodMaxUs, s.loadPercent,
 			(unsigned long long)s.underruns, (unsigned long long)s.catchUps, s.inputPeak[0] * 100,
-			s.estimatedLatencyMs, s.realtimeConfigured ? "" : "  (real-time audio NOT configured)");
+			(unsigned long long)(gShim.midi != NULL ? gShim.midi->Received() : 0), s.estimatedLatencyMs, s.realtimeConfigured ? "" : "  (real-time audio NOT configured)");
 	}
 	return 0;
 }
@@ -273,6 +299,18 @@ jack_activate(jack_client_t* client)
 		}
 	}
 	client->active = true;
+	if (gShim.midi == NULL) {
+		for (size_t i = 0; i < client->ports.size(); i++) {
+			if (client->ports[i]->midi && (client->ports[i]->flags & JackPortIsInput) != 0) {
+				GxHaikuMidi* midi = new GxHaikuMidi();
+				if (midi->Start() == B_OK)
+					gShim.midi = midi;
+				else
+					delete midi;
+				break;
+			}
+		}
+	}
 	if (getenv("GX_HAIKU_STATS") != NULL && !gShim.statsStarted) {
 		gShim.statsStarted = true;
 		resume_thread(spawn_thread(StatsThread, "gx stats", B_LOW_PRIORITY, NULL));
@@ -291,6 +329,10 @@ jack_deactivate(jack_client_t* client)
 		gShim.audio->Stop();
 		delete gShim.audio;
 		gShim.audio = NULL;
+		if (gShim.midi != NULL) {
+			delete gShim.midi;
+			gShim.midi = NULL;
+		}
 	}
 	return 0;
 }
@@ -523,11 +565,55 @@ jack_free(void* ptr)
 
 // ------------------------------------------------------------------ MIDI (ports exist, no events yet)
 
-uint32_t jack_midi_get_event_count(void*) { return 0; }
-int jack_midi_event_get(jack_midi_event_t*, void*, uint32_t) { return -1; }
-void jack_midi_clear_buffer(void*) {}
-jack_midi_data_t* jack_midi_event_reserve(void*, jack_nframes_t, size_t) { return NULL; }
-int jack_midi_event_write(void*, jack_nframes_t, const jack_midi_data_t*, size_t) { return -1; }
+uint32_t
+jack_midi_get_event_count(void* port_buffer)
+{
+	return ((MidiBuf*)port_buffer)->count;
+}
+
+
+int
+jack_midi_event_get(jack_midi_event_t* event, void* port_buffer, uint32_t index)
+{
+	MidiBuf* mb = (MidiBuf*)port_buffer;
+	if (index >= mb->count)
+		return -1;
+	event->time = mb->ev[index].time;
+	event->size = mb->ev[index].size;
+	event->buffer = mb->ev[index].data;
+	return 0;
+}
+
+
+void
+jack_midi_clear_buffer(void* port_buffer)
+{
+	((MidiBuf*)port_buffer)->count = 0;
+}
+
+
+jack_midi_data_t*
+jack_midi_event_reserve(void* port_buffer, jack_nframes_t time, size_t size)
+{
+	MidiBuf* mb = (MidiBuf*)port_buffer;
+	if (mb->count >= 64 || size > sizeof(mb->ev[0].data))
+		return NULL;
+	MidiBuf::Ev& ev = mb->ev[mb->count++];
+	ev.time = time;
+	ev.size = size;
+	return ev.data;
+}
+
+
+int
+jack_midi_event_write(void* port_buffer, jack_nframes_t time, const jack_midi_data_t* data, size_t size)
+{
+	jack_midi_data_t* p = jack_midi_event_reserve(port_buffer, time, size);
+	if (p == NULL)
+		return -1;
+	memcpy(p, data, size);
+	return 0;
+}
 
 
 // ------------------------------------------------------------------ ring buffer

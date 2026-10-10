@@ -341,7 +341,7 @@ def configure(conf):
     if opt.standalone and conf.env['IS_HAIKU']:
         # no JACK on Haiku: the stub headers in src/haiku/jack and the Media Kit based src/haiku/haiku_jack.cpp
         conf.env['INCLUDES_JACK'] = [os.path.join(conf.path.abspath(), 'src', 'haiku')]
-        conf.env['LIB_JACK'] = ['media', 'be', 'network']
+        conf.env['LIB_JACK'] = ['media', 'midi2', 'be', 'network']
         # lrdf.h includes <raptor.h>, which lives in the raptor2 headers folder
         conf.env.append_value('CXXFLAGS', conf.cmd_and_log(['pkg-config', '--cflags', 'raptor2']).split())
         conf.env.append_value('CXXFLAGS', ['-include', os.path.join(conf.path.abspath(), 'src', 'haiku', 'haiku_compat.h')])
