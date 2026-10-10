@@ -1,4 +1,23 @@
-# Guitarix for Haiku 0.47.0-1
+# Guitarix for Haiku 0.47.0-2
+
+Drag and drop works in the rack, and the Help links open your browser.
+
+## What's new
+- **Drag and drop of effects works.** Moving an effect in the rack with its handle (the round screw at the corner of its box), and dragging an effect from the plugin pool into the rack, now work. Before, the effect vanished when you started the drag and stayed gone until you changed something or restarted. The cause was the Wayland server that Haiku's GTK talks to: the one in HaikuPorts' `wayland_server` package (2025-10-04) cannot start a drag. Guitarix now brings a newer copy of that server (from https://github.com/X547/wayland-server, MIT licensed, with one fix for a loop that fired thousands of motion events a second during a drag) and loads it before GTK starts. The system's own copy is not touched. Set `GX_HAIKU_SYSTEM_WAYLAND=1` to use the system's server instead.
+- **The Help menu opens your browser.** **Help**, **Get NAM Models** and **Get RTNeural Models** open the default web browser. They did nothing before.
+
+## Known limits
+- No picture follows the pointer while you drag; the orange line in the rack shows where the effect will land.
+- The effect has to be dropped on the rack, at the spot where the line shows.
+- The MIDI input has been tried with a software sender; a real controller is still to be confirmed.
+- Only the Media Kit's default sound input and output are used.
+
+## Install
+`guitarix-0.47.0-2-x86_64.hpkg` is for 64-bit Haiku. Install it **for the whole system**, not for "home". The program looks for its data and the Wayland server in the system location, so a home install cannot find them.
+
+---
+
+# Guitarix for Haiku 0.47.0-1 (earlier release)
 
 A port of Guitarix 0.47.0, the virtual guitar amplifier and effects processor, to Haiku. It plays and records through the Haiku **Media Kit** and takes MIDI through the **MIDI2 Kit**; there is no JACK.
 
