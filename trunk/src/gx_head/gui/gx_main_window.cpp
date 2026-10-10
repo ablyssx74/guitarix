@@ -2651,7 +2651,12 @@ MainWindow::MainWindow(gx_engine::GxMachineBase& machine_, gx_system::CmdlineOpt
     preset_window = new PresetWindow(bld, machine, options, actions, uimanager);
 
     uimanager.set_accelerators_from_menu();
-    if (!machine.get_jack()) {
+    bool no_jack = !machine.get_jack();
+#ifdef __HAIKU__
+    no_jack = true;     // no JACK on Haiku: the Media Kit is used and these menu entries have nothing to control
+    uimanager.find_item("JackStartup")->set_visible(false);
+#endif
+    if (no_jack) {
         uimanager.find_item("JackLatency")->set_visible(false);
         uimanager.find_item("JackServerConnection")->set_visible(false);
         uimanager.find_item("JackPorts")->set_visible(false);
