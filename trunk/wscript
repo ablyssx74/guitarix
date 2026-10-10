@@ -276,6 +276,10 @@ def configure(conf):
 
     conf.env['OS'] = platform
 
+    if conf.env['IS_HAIKU']:
+        # Haiku packages keep their files in data/<name>, not in share
+        conf.env['SHAREDIR'] = conf.env['PREFIX'] + '/data/guitarix'
+
     if not opt.disable_nls and opt.standalone :
         conf.load('intltool')
         conf.gxload('intltool_extras')

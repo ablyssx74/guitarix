@@ -16,7 +16,13 @@
 
 #include <atomic>
 #include <stdio.h>
+#include <Alert.h>
+#include <Application.h>
+#include <Directory.h>
+#include <File.h>
+#include <FindDirectory.h>
 #include <OS.h>
+#include <Path.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,8 +85,9 @@ struct Shim {
 	_jack_port*					hardwareIn;
 	std::atomic<uint64_t>		frameTime;
 	bool						statsStarted;
+	bool						realtimeChecked;
 
-	Shim() : audio(NULL), midi(NULL), rate(48000), frames(1024), detected(false), hardwareIn(NULL), frameTime(0), statsStarted(false) {}
+	Shim() : audio(NULL), midi(NULL), rate(48000), frames(1024), detected(false), hardwareIn(NULL), frameTime(0), statsStarted(false), realtimeChecked(false) {}
 };
 
 Shim gShim;
@@ -222,6 +229,37 @@ StatsThread(void*)
 }
 
 
+// Rakarrack does the same: tell the user that real-time audio is not set up, since Guitarix runs better with it.
+// "Don't remind me again" leaves a marker file in the settings folder.
+void
+WarnNoRealtime()
+{
+	fprintf(stderr, "[audio] real-time audio is not configured for the sound driver\n");
+	if (be_app == NULL)
+		return;			// no GUI: the line above is all
+
+	BPath marker;
+	if (find_directory(B_USER_SETTINGS_DIRECTORY, &marker) != B_OK)
+		return;
+	marker.Append("guitarix");
+	create_directory(marker.Path(), 0755);
+	marker.Append("no_realtime_warning");
+	BEntry entry(marker.Path());
+	if (entry.Exists())
+		return;
+
+	BAlert* alert = new BAlert("Real-time audio",
+		"Guitarix works best when real-time audio is enabled. Please enable real-time audio "
+		"(a small play and record buffer in the sound driver settings) and restart the Media Server.\n\n"
+		"Guitarix keeps running without it, but you may hear dropouts and a longer delay.",
+		"OK", "Don't remind me again", NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
+	alert->SetShortcut(0, B_ESCAPE);
+	if (alert->Go() == 1) {
+		BFile file(marker.Path(), B_WRITE_ONLY | B_CREATE_FILE);
+	}
+}
+
+
 bool
 AnyActive()
 {
@@ -299,6 +337,13 @@ jack_activate(jack_client_t* client)
 		}
 	}
 	client->active = true;
+	if (!gShim.realtimeChecked) {
+		gShim.realtimeChecked = true;
+		GxHaikuAudioStats st;
+		gShim.audio->GetStats(&st);
+		if (!st.realtimeConfigured)
+			WarnNoRealtime();
+	}
 	if (gShim.midi == NULL) {
 		for (size_t i = 0; i < client->ports.size(); i++) {
 			if (client->ports[i]->midi && (client->ports[i]->flags & JackPortIsInput) != 0) {
