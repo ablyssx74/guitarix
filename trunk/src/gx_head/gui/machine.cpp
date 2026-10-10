@@ -56,7 +56,7 @@ void set_memory_allocation() {}
 
 void lock_rt_memory() {
 #ifndef GUITARIX_AS_PLUGIN
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__HAIKU__)
     extern char __start_rt_text[], __stop_rt_text[];
     extern char __start_rt_data[], __stop_rt_data[];
     struct {

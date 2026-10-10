@@ -257,6 +257,7 @@ def configure(conf):
     conf.env['IS_LINUX'] = platform == 'linux' or platform == 'posix'
     conf.env['IS_SUN'] = platform == 'sunos'
     conf.env['IS_MSWIN'] = platform == 'win32'
+    conf.env['IS_HAIKU'] = platform.startswith('haiku')
 
     if conf.env['IS_LINUX']:
         conf.define ('IS_LINUX', platform )
@@ -269,6 +270,9 @@ def configure(conf):
 
     if conf.env['IS_MSWIN']:
         conf.define ('IS_MSWIN', platform )
+
+    if conf.env['IS_HAIKU']:
+        conf.define ('IS_HAIKU', platform )
 
     conf.env['OS'] = platform
 
@@ -334,13 +338,20 @@ def configure(conf):
     conf.check(header_name='fftw3.h', mandatory=1)
     conf.check_cfg(package='fftw3f', args=['--cflags','--libs','fftw3f >= 3.3.8'], uselib_store='FFTW3', mandatory=1)
 
-    if opt.standalone:
+    if opt.standalone and conf.env['IS_HAIKU']:
+        # no JACK on Haiku: the stub headers in src/haiku/jack and the Media Kit based src/haiku/haiku_jack.cpp
+        conf.env['INCLUDES_JACK'] = [os.path.join(conf.path.abspath(), 'src', 'haiku')]
+        conf.env['LIB_JACK'] = ['media', 'be', 'network']
+        # lrdf.h includes <raptor.h>, which lives in the raptor2 headers folder
+        conf.env.append_value('CXXFLAGS', conf.cmd_and_log(['pkg-config', '--cflags', 'raptor2']).split())
+        conf.env.append_value('CXXFLAGS', ['-include', os.path.join(conf.path.abspath(), 'src', 'haiku', 'haiku_compat.h')])
+    elif opt.standalone:
         try:
             conf.check_cfg(package='jack', args=['--cflags','--libs','jack >= 0.116.2','jack <= 1.8.0'], uselib_store='JACK', msg="Checking for 'jackd1'", mandatory=1)
         except ConfigurationError:
             conf.check_cfg(package='jack', args=['--cflags','--libs','jack >= 1.9.2'], uselib_store='JACK', msg="Checking for 'jackd2'", mandatory=1)
         # jack_session support
-        if opt.jack_session:
+        if opt.jack_session and not conf.env['IS_HAIKU']:
             code = "#include <jack/session.h>\nint main(){return JackSessionID != 0;}"
             conf.check_cxx(fragment=code, msg="Checking for jack session support", define_name='HAVE_JACK_SESSION')
     if opt.standalone:

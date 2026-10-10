@@ -207,6 +207,9 @@ def build(bld):
         sources_gui.append("gui/avahi_discover.cpp")
         sources_engine.append("engine/avahi_register.cpp")
     sources = sources_engine + sources_engine_shared + sources_gui
+    if bld.env.IS_HAIKU:
+        sources += ['../haiku/haiku_jack.cpp', '../haiku/gx_haiku_audio.cpp']
+        incl.append('../haiku')
     uselib = ['JACK', 'SNDFILE', 'GTHREAD', 'GMODULE_EXPORT', 'CURL', 'LIBLO',
               'GTK2', 'GTKMM', 'GIOMM', 'FFTW3', 'LRDF', 'LILV', 'BOOST_SYSTEM','BOOST_IOSTREAMS',
               'ZITA_CONVOLVER','ZITA_RESAMPLER']
