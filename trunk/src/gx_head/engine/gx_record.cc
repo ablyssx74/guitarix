@@ -151,7 +151,7 @@ void SCapture::start_thread() {
     pthread_attr_setschedparam(&attr, &spar);
     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
     pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-    // pthread_attr_setstacksize(&attr, 0x10000);
+    pthread_attr_setstacksize(&attr, 0x200000); // 2 MB: the encoders (ogg, flac) need more than the 256 KB that is the default on Haiku
     if (pthread_create(&m_pthr, &attr, run_thread,
                        reinterpret_cast<void*>(this))) {
         err = true;
@@ -189,7 +189,14 @@ void SCapture::init_static(unsigned int samplingFreq, PluginDef *p)
 inline void SCapture::save_to_wave(SNDFILE * sf, float *tape, int lSize)
 {
     if (sf) {
-        sf_write_float(sf,tape, lSize);
+        // Written in small pieces, not in one call of up to MAXRECSIZE samples. libvorbis (the ogg format) keeps a
+        // work area of the size of what it is given on the stack, which overflows the stack of a thread where that is
+        // small, as it is on Haiku (256 KB).
+        const int piece = 4096 * (channel > 0 ? channel : 1);
+        for (int done = 0; done < lSize; done += piece) {
+            int n = lSize - done < piece ? lSize - done : piece;
+            sf_write_float(sf, tape + done, n);
+        }
         sf_write_sync(sf);
     }
 }
@@ -197,6 +204,7 @@ inline void SCapture::save_to_wave(SNDFILE * sf, float *tape, int lSize)
 SNDFILE *SCapture::open_stream(std::string fname)
 {
     SF_INFO sfinfo ;
+    memset(&sfinfo, 0, sizeof(sfinfo));
     sfinfo.channels = channel;
     sfinfo.samplerate = fSamplingFreq;
     switch(int(fformat)) {
