@@ -1,4 +1,22 @@
-# Guitarix for Haiku 0.47.0-2
+# Guitarix for Haiku 0.47.0-3
+
+Recording to ogg no longer crashes Guitarix.
+
+## What's new
+- **The Recorder can save ogg files.** Choosing ogg as the file format and recording used to crash Guitarix every time. The recorder writes the file on a thread of its own, and on Haiku such a thread has a stack of 256 KB. The ogg encoder (libvorbis) keeps a work area on the stack that is as large as the piece of audio it is given, and the recorder gave it up to 131072 samples at once. The recorder now writes the audio in small pieces, and its thread has a 2 MB stack. wav, w64 and flac were not affected. The recordings are saved in `~/gxrecord/`, named `guitarix_<date>-<time>` with the extension of the format.
+
+## Known limits
+- No picture follows the pointer while you drag; the orange line in the rack shows where the effect will land.
+- The effect has to be dropped on the rack, at the spot where the line shows.
+- The MIDI input has been tried with a software sender; a real controller is still to be confirmed.
+- Only the Media Kit's default sound input and output are used.
+
+## Install
+`guitarix-0.47.0-3-x86_64.hpkg` is for 64-bit Haiku. Install it **for the whole system**, not for "home". The program looks for its data and the Wayland server in the system location, so a home install cannot find it.
+
+---
+
+# Guitarix for Haiku 0.47.0-2 (earlier release)
 
 Drag and drop works in the rack, and the Help links open your browser.
 
