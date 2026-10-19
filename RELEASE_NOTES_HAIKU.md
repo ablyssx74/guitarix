@@ -59,4 +59,4 @@ A port of Guitarix 0.47.0, the virtual guitar amplifier and effects processor, t
 `guitarix-0.47.0-1-x86_64.hpkg` is for 64-bit Haiku. Install it **for the whole system**, not for "home". The program looks for its data in the system location, so a home install cannot find it.
 
 ## About this build
-Based on the Guitarix 0.47.0 source (https://github.com/brummer10/guitarix), kept in the fork https://github.com/ablyssx74/guitarix on the `haiku-port` branch. The Haiku parts are in `trunk/src/haiku/`: the Media Kit audio backend, a small layer that stands in for the JACK calls the engine makes, the MIDI2 input, the icon, and `make-package.sh`, which builds the package.
+Based on the Guitarix 0.47.0 source (https://github.com/brummer10/guitarix), kept in the fork https://github.com/ablyssx74/guitarix (the `master` branch; `haiku-port` is the same). The Haiku parts are in `trunk/src/haiku/`: the Media Kit audio backend, a small layer that stands in for the JACK calls the engine makes, the MIDI2 input, the icon, and `make-package.sh`, which builds the package.

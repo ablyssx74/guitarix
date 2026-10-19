@@ -1,5 +1,10 @@
 # guitarix
 
+> ## Guitarix for Haiku
+> This fork ports Guitarix 0.47.0 to [Haiku](https://www.haiku-os.org). It plays and records through the Haiku Media Kit and takes MIDI through the MIDI2 Kit; there is no JACK. A 64-bit package (`guitarix-0.47.0-<revision>-x86_64.hpkg`) is attached to each release (tags `guitarix-haiku-0.47.0-N`). Install it for the whole system, not for "home".
+>
+> See [RELEASE_NOTES_HAIKU.md](RELEASE_NOTES_HAIKU.md) for what works and the limits, and `trunk/src/haiku/make-package.sh` to build the package on Haiku.
+
 ![guitarix](https://a.fsdn.com/con/app/proj/guitarix/screenshots/Guitarix_Dark.png/max/max/1)
 
 Guitarix is a modular, virtual amplifier for Linux.
